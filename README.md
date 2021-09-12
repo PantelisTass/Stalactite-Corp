@@ -6,4 +6,4 @@ At Stalactite, we apply mathematical models to the financial world. This is done
 
 We would be delighted for you to have a look at our work herein and any feedback and insights are welcome.
 
-📫 How to reach us: pade.tass@gmail.com, yoprotonotarios@gmail.com
+📫 How to reach us: pade.tass@gmail.com, yoprotonotarios@gmail.com,...
