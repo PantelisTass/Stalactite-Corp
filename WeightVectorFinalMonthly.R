@@ -3,7 +3,6 @@ library(rvest)
 library(magrittr) # needs to be run every time you start R and want to use %>%
 library(quantmod)
 library(comprehenr) # used for list comprehension
-
 # get the URL for the wikipedia page with all SP500 symbols
 url <- "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 # use that URL to scrape the SP500 table using rvest
@@ -78,7 +77,7 @@ HistoricalPricesColumns = function(symbols, startDate, endDate){
   return(df)
 }
 
-priceTable = HistoricalPricesColumns(Listy, '2010-01-01', '2021-08-30')
+priceTable = HistoricalPricesColumns(Listy, '2019-01-01', '2021-09-13')
 
 
 library(quantmod)
@@ -130,18 +129,17 @@ V = Cov_Matrix(df)
 A = t(e)%*%solve(V)%*%e
 B = t(mu)%*%solve(V)%*%e
 C = t(mu)%*%solve(V)%*%mu
-Mu = 0.2
+Mu = 0.07
 lambda_1_mu = (C-Mu*B)/(A*C-B*B)
 lambda_2_mu = (Mu*A-B)/(A*C-B*B)
 print(lambda_1_mu[1])
 w = lambda_1_mu[1]*solve(V)%*%e+lambda_2_mu[1]*solve(V)%*%mu
-write.csv(w,"WeightVector2_Mu=0,2_Monthly.csv")
+write.csv(w,"WeightVector2_Mu=0,07_Monthly.csv")
 print(sum(w))
 
-Current_Stocks = to_vec(for(i in 1:10) getQuote(colnames(df)[i], warnings = FALSE, auto.assign = FALSE)[,2])
-
-Account_Value = 100000
-Numbers_Markowitz = matrix(0, nrow = 1, ncol = length(Listy))
-Numbers_Markowitz[1,] = floor(Account_Value/(1+0.5*abs(sum(w[which(w<0)])))*w/Current_Stocks)
+Account_Value = 500000
+epsilon = 10000
+Numbers_Markowitz = c(matrix(0, nrow = 1, ncol = length(Listy))) 
+Numbers_Markowitz = floor(2*(Account_Value-10000)/(sum(w[which(w>=0)])+sum(abs(w[which(w<0)])))*w/priceTable[nrow(priceTable),])
 colnames(Numbers_Markowitz) = colnames(df) 
-write.csv(Numbers_Markowitz,"Numbers_Markowitz_Mu=0,2_Monthly.csv")
+write.csv(Numbers_Markowitz,"Numbers_Markowitz_Mu=0,07_Monthly.csv")
