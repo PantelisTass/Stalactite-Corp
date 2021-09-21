@@ -38,22 +38,18 @@ get_symbols = function(ticker = "AAPL"){
 #create the dataframe of SP500 data by interating over our list of symbols and call our get symbols function each time
 #the map function accomplishes this
 
-Apple_Stock = getSymbols(QQQ = 'yahoo',  'AAPL', auto.assign = FALSE, env = FALSE, periodicity = 'weekly')
-head(Apple_Stock)
-Microsoft_Stock = getSymbols(QQQ = 'yahoo',  'MSFT', auto.assign = FALSE, env = FALSE, periodicity = 'weekly')
 
 
-plot(Apple_Stock[,1])
-corr(as.vector(Apple_Stock[,1]), as.vector(Microsoft_Stock[,1]))
 
-GBMotion = function(symbol, N, K, tmax, s = FALSE){ 
-  dt = tmax/K
+GBMotion = function(symbol, N, startDate, endDate, s = FALSE){ 
+  
   Symbol = getSymbols(QQQ = 'yahoo',  symbol, auto.assign = FALSE, env = FALSE)
   
   PriceMat = c()
   
   vec = as.vector(Symbol[,2])
   
+
   Daily_returns = c()
   
   for(i in 1:(length(vec)-1)){
@@ -64,19 +60,24 @@ GBMotion = function(symbol, N, K, tmax, s = FALSE){
   sigma = sd(Daily_returns)
   drift = mu-(sigma**2)/2
   
-  t = seq(0, tmax, tmax/K)
-  
-  
+  days = as.numeric(as.Date(endDate)-as.Date(startDate))
+  t = seq(0, days, 1)
+  for (i in 0:days){
+    t[i+1] = as.Date(startDate) + i
+  }
+  dates = as.Date(t)
   colvec = c()
   for(j in 1: N){
     returns = c(Daily_returns[length(Daily_returns)])
-    for(n in 1:K){
-      returns = c(returns, returns[length(returns)] + drift*dt + sigma*rnorm(n = 1, mean = 0, sd = sqrt(dt)))
+    for(n in 1:days){
+      returns = c(returns, returns[length(returns)] + drift + sigma*rnorm(n = 1, mean = 0, sd = 1))
     }
     PriceMat = cbind(PriceMat, vec[length(vec)]*exp(returns))
     colvec = c(colvec, j)
   }
-  PriceMat = cbind(PriceMat, t)
+  print(dates)
+  PriceMat = cbind(PriceMat, as.Date(dates))
+  print(PriceMat)
   colvec = c(colvec, 'time')
  
   if(s  == TRUE){
@@ -85,14 +86,10 @@ GBMotion = function(symbol, N, K, tmax, s = FALSE){
     df = data.frame(PriceMat)
     colnames(df) = colvec
     df_long = melt(df, id = 'time')
-    gg = ggplot(df_long, aes(x = time, y = value, colour = variable))+geom_line()
+    gg = ggplot(df_long, aes(x = as.Date(time), y = value, colour = variable))+geom_line()
     print(gg)
   }
   
   return(df_long)
   
 }
-
-
-vec = GBMotion('AAPL', 10, 100, 10, s = TRUE)
-
