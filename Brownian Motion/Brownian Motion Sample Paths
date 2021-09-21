@@ -1,0 +1,98 @@
+# for scraping
+library(rvest)
+# blanket import for core tidyverse packages
+library(tidyverse)
+# tidy financial analysis 
+library(tidyquant)
+# tidy data cleaning functions
+library(janitor)
+library(quantmod)
+library(ggplot2)
+today = Sys.Date()
+today
+date = today %m+% months(-3)
+date
+
+# get the URL for the wikipedia page with all SP500 symbols
+url <- "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+# use that URL to scrape the SP500 table using rvest
+tickers <- url %>%
+  # read the HTML from the webpage
+  read_html() %>%
+  # one way to get table
+  #html_nodes(xpath='//*[@id="mw-content-text"]/div/table[1]') %>%
+  # easier way to get table
+  html_nodes(xpath = '//*[@id="constituents"]') %>% 
+  html_table()
+#create a vector of tickers
+sp500tickers <- tickers[[1]]
+sp500tickers$Symbol
+sp500tickers = sp500tickers %>% mutate(Symbol = case_when(Symbol == "BRK.B" ~ "BRK-B",
+                                                          Symbol == "BF.B" ~ "BF-B",
+                                                          TRUE ~ as.character(Symbol)))
+sp500 = sp500tickers$Symbol
+
+get_symbols = function(ticker = "AAPL"){
+  df = tq_get(ticker, from = date) %>% mutate(symbol = rep(ticker, length(date)))
+}
+#create the dataframe of SP500 data by interating over our list of symbols and call our get symbols function each time
+#the map function accomplishes this
+
+Apple_Stock = getSymbols(QQQ = 'yahoo',  'AAPL', auto.assign = FALSE, env = FALSE, periodicity = 'weekly')
+head(Apple_Stock)
+Microsoft_Stock = getSymbols(QQQ = 'yahoo',  'MSFT', auto.assign = FALSE, env = FALSE, periodicity = 'weekly')
+
+
+plot(Apple_Stock[,1])
+corr(as.vector(Apple_Stock[,1]), as.vector(Microsoft_Stock[,1]))
+
+GBMotion = function(symbol, N, K, tmax, s = FALSE){ 
+  dt = tmax/K
+  Symbol = getSymbols(QQQ = 'yahoo',  symbol, auto.assign = FALSE, env = FALSE)
+  
+  PriceMat = c()
+  
+  vec = as.vector(Symbol[,2])
+  
+  Daily_returns = c()
+  
+  for(i in 1:(length(vec)-1)){
+    Daily_returns = c(Daily_returns, log(vec[i+1]/vec[i]))
+  }
+  
+  mu = mean(Daily_returns)
+  sigma = sd(Daily_returns)
+  drift = mu-(sigma**2)/2
+  
+  t = seq(0, tmax, tmax/K)
+  
+  
+  colvec = c()
+  for(j in 1: N){
+    returns = c(Daily_returns[length(Daily_returns)])
+    for(n in 1:K){
+      returns = c(returns, returns[length(returns)] + drift*dt + sigma*rnorm(n = 1, mean = 0, sd = sqrt(dt)))
+    }
+    PriceMat = cbind(PriceMat, vec[length(vec)]*exp(returns))
+    colvec = c(colvec, j)
+  }
+  PriceMat = cbind(PriceMat, t)
+  colvec = c(colvec, 'time')
+ 
+  if(s  == TRUE){
+    print(colvec)
+    library(ggplot2)
+    df = data.frame(PriceMat)
+    colnames(df) = colvec
+    df_long = melt(df, id = 'time')
+    gg = ggplot(df_long, aes(x = time, y = value, colour = variable))+geom_line()
+    print(gg)
+  }
+  
+  return(df_long)
+  
+}
+
+
+vec = GBMotion('AAPL', 10, 100, 10, s = TRUE)
+
