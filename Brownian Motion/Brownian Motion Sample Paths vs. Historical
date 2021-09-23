@@ -108,7 +108,7 @@ GBMotion = function(symbol, N, startDate, endDate, s = FALSE){
     
     df_long = melt(df, id = c('time', 'Time_actual', 'actual'), variable = c('Paths'))
     print(df_long)
-    gg = ggplot(df_long, mapping = aes(x = as.Date(time), y = value, linetype = 'dashed', colour = Paths)) + ggtitle (paste("Price Projections for", symbol))+xlab('Time')+ylab('Price')+geom_line() + 
+    gg = ggplot(df_long, mapping = aes(x = as.Date(time), y = value, linetype = symbol, colour = Paths)) + ggtitle (paste("Price Projections for", symbol))+xlab('Time')+ylab('Price')+geom_line() + 
       geom_line(actual_df, size = 1, mapping = aes(as.Date(actual_dates), Historical), color = 'black')+
       #scale_linetype_manual(values = c('Hist'='dashed'))
      labs(linetype="Historical Path")
@@ -120,4 +120,4 @@ GBMotion = function(symbol, N, startDate, endDate, s = FALSE){
   
 }
 
-vec = GBMotion('AAPL', 10, '2018-01-01', '2021-05-01', s = TRUE)
+vec = GBMotion('AAPL', 10, '2020-01-01', '2021-05-01', s = TRUE)
