@@ -42,8 +42,8 @@ get_symbols = function(ticker = "AAPL"){
 
 
 GBMotion = function(symbol, N, startDate, endDate, s = FALSE){ 
-  
-  Symbol = getSymbols(QQQ = 'yahoo',  symbol, auto.assign = FALSE, env = FALSE)
+  actual = getSymbols(symbol, from = startDate, to = endDate, auto.assign = FALSE, env = FALSE)
+  Symbol = getSymbols(symbol, to = startDate, auto.assign = FALSE, env = FALSE)
   
   PriceMat = c()
   
@@ -68,6 +68,7 @@ GBMotion = function(symbol, N, startDate, endDate, s = FALSE){
   dates = as.Date(t)
   colvec = c()
   for(j in 1: N){
+    set.seed(NULL)
     returns = c(Daily_returns[length(Daily_returns)])
     for(n in 1:days){
       returns = c(returns, returns[length(returns)] + drift + sigma*rnorm(n = 1, mean = 0, sd = 1))
@@ -75,21 +76,48 @@ GBMotion = function(symbol, N, startDate, endDate, s = FALSE){
     PriceMat = cbind(PriceMat, vec[length(vec)]*exp(returns))
     colvec = c(colvec, j)
   }
-  print(dates)
   PriceMat = cbind(PriceMat, as.Date(dates))
-  print(PriceMat)
   colvec = c(colvec, 'time')
- 
   if(s  == TRUE){
-    print(colvec)
-    library(ggplot2)
+    diff = setdiff(as.vector(dates), as.vector(index(actual)))
+    Intersect = intersect(as.vector(dates), as.vector(index(actual)))
+    actual_dates = index(actual)
+    Actual = numeric(length(dates))
+    Time_actual = numeric(length(dates))
+    indices = which(dates%in%Intersect==TRUE)
+    actual = actual[,2]
+    for (i in 1: length(dates)){
+      if (i%in%indices==TRUE){
+        Actual[i] = actual[which(indices==i)]
+        Time_actual[i] = dates[i]
+      }
+      else{
+        Actual[i] = actual[1]
+        Time_actual[i] = dates[1]
+      }
+    }
+    PriceMat = cbind(PriceMat, Time_actual)
+    colvec = c(colvec, 'Time_actual')
+    PriceMat = cbind(PriceMat, Actual)
+    colvec = c(colvec, 'actual')
+    #, 'Time_actual', 'actual'
     df = data.frame(PriceMat)
     colnames(df) = colvec
-    df_long = melt(df, id = 'time')
-    gg = ggplot(df_long, aes(x = as.Date(time), y = value, colour = variable))+geom_line()
+    actual_df = data.frame(cbind(actual_dates, as.vector(actual)))
+    colnames(actual_df) = c('actual_dates', 'Historical')
+    
+    df_long = melt(df, id = c('time', 'Time_actual', 'actual'), variable = c('Paths'))
+    print(df_long)
+    gg = ggplot(df_long, mapping = aes(x = as.Date(time), y = value, linetype = 'dashed', colour = Paths)) + ggtitle (paste("Price Projections for", symbol))+xlab('Time')+ylab('Price')+geom_line() + 
+      geom_line(actual_df, size = 1, mapping = aes(as.Date(actual_dates), Historical), color = 'black')+
+      #scale_linetype_manual(values = c('Hist'='dashed'))
+     labs(linetype="Historical Path")
     print(gg)
+   
   }
   
   return(df_long)
   
 }
+
+vec = GBMotion('AAPL', 10, '2018-01-01', '2021-05-01', s = TRUE)
