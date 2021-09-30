@@ -1,4 +1,5 @@
 # Web Scraping: List of S&P 500 stocks
+library(NLP)
 library(rvest)
 library(magrittr) # needs to be run every time you start R and want to use %>%
 library(quantmod)
@@ -66,7 +67,7 @@ HistoricalPricesColumns = function(symbols, startDate, endDate){
   
   for(i in 1:ncol(symbols)){
     Cols = cbind(Cols, as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,2]))
-                 
+    
   }
   df = data.frame(Cols)
   #for(i in 1:nrow(symbols)){
@@ -77,69 +78,90 @@ HistoricalPricesColumns = function(symbols, startDate, endDate){
   return(df)
 }
 
-priceTable = HistoricalPricesColumns(Listy, '2019-01-01', '2021-09-13')
-
-
-library(quantmod)
 options("getSymbols.warning4.0"=FALSE)
 
-
-# Covariance Matrix Computations
-
-#covariance matrix: 
-corr = function(x,y){
-  return(cov(x,y)/sqrt(var(x)*var(y)))
-}
-Cov_Matrix = function(df){
-  matrix = matrix(0, nrow = ncol(df), ncol = ncol(df))
-  for (i in 1:ncol(df)){
-    for(j in 1:ncol(df)){
-      matrix[i,j] = corr(df[,i], df[,j])
-    }
-  }
-  covMat = as.data.frame(matrix)
-  colnames(covMat) = colnames(df) 
-  rownames(covMat) = colnames(df)
-  return(covMat)
-}
-
-
-df <- data.frame(priceTable)
-Cov_Matrix(df)
-#produces a random sample of symbols from sp500 without replacement
-#List = sample(sp500, 10, replace = FALSE, prob = NULL)
-#print(priceTable))
-final = Cov_Matrix(vec)
-write.csv(final,"C:\\Users\\USER\\Desktop\\Test1.csv")
-Expected_Return_Rates = matrix(0, nrow = 1, ncol = ncol(df))
-#print(Expected_Return_Rates)
-for (i in 1:ncol(priceTable)){
-  vec = priceTable[2:nrow(priceTable),i]-priceTable[1:nrow(priceTable)-1,i]
+HistoricalCapColumns = function(symbols, startDate, endDate){
   
-  for (j in 1:nrow(priceTable)-1){
-    vec[j] = vec[j]/priceTable[j,i]
+  options("getSymbols.warning4.0"=FALSE)
+  
+  ColsCap = c()
+  
+  for(i in 1:length(symbols)){
+    vec = as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,5])*as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,2])
+    ColsCap = cbind(ColsCap, vec)
+    
   }
-  Expected_Return_Rates[1,i] = sum(vec)/nrow(priceTable)
+  
+  df_Cap = data.frame(ColsCap)
+  #for(i in 1:nrow(symbols)){
+  #  names(df)[i] = symbols[i,]
+  #}
+  
+  colnames(df_Cap) = colnames(symbols)
+  return(df_Cap)
 }
-colnames(Expected_Return_Rates) = colnames(df) 
-#print(Expected_Returns)
-mu = Expected_Return_Rates[1,]
-e = rep(1, ncol(priceTable))
-V = Cov_Matrix(df)
-A = t(e)%*%solve(V)%*%e
-B = t(mu)%*%solve(V)%*%e
-C = t(mu)%*%solve(V)%*%mu
-Mu = 0.07
-lambda_1_mu = (C-Mu*B)/(A*C-B*B)
-lambda_2_mu = (Mu*A-B)/(A*C-B*B)
-print(lambda_1_mu[1])
-w = lambda_1_mu[1]*solve(V)%*%e+lambda_2_mu[1]*solve(V)%*%mu
-write.csv(w,"WeightVector2_Mu=0,07_Monthly.csv")
-print(sum(w))
 
-Account_Value = 500000
-epsilon = 10000
-Numbers_Markowitz = c(matrix(0, nrow = 1, ncol = length(Listy))) 
-Numbers_Markowitz = floor(2*(Account_Value-10000)/(sum(w[which(w>=0)])+sum(abs(w[which(w<0)])))*w/priceTable[nrow(priceTable),])
-colnames(Numbers_Markowitz) = colnames(df) 
-write.csv(Numbers_Markowitz,"Numbers_Markowitz_Mu=0,07_Monthly.csv")
+
+MuHistorical = function(histcaps){
+  
+  Mu = c()
+  
+  MarketCap = c()
+
+  for (i in 1:nrow(histcaps)){
+    MarketCap = c(MarketCap, sum(histcaps[i,]))
+  }
+  
+  for(i in 1:length(symbols)){
+    Mu = c(Mu, histcaps[,i]/MarketCap[i])
+    
+  }
+  
+  return(Mu)
+  
+}
+
+EntropyHistorical = function(symbols, muHistorical){
+  ColsS = c()
+  Mat_muHist = as.vector(muHistorical)
+  Total_Entropy = -Mat_muHist%*%log(Mat_muHist)
+  for(i in 1:length(symbols)){
+    ColsS = cbind(ColsS, -muHistorical[i]*log(muHistorical[i])/Total_Entropy)
+  
+  }
+  df = data.frame(ColsS)
+  colnames(df) = colnames(symbols)
+  return(df)
+
+}
+
+getEntropyHstorical = function(symbols, startDate, endDate){
+  histcap = HistoricalCapColumns(Listy, startDate, endDate)
+  mu = MuHistorical(histcap)
+  EntropyHist = EntropyHistorical(Listy, mu)
+  return(EntropyHist)
+}
+
+
+
+getEntropyWeights = function(Account_Value){
+Current_Stocks = to_vec(for(i in 1:length(Listy)) getQuote(colnames(Listy[i]), warnings = FALSE, auto.assign = FALSE)[,2])
+Current_Vol = to_vec(for(i in 1:length(Listy)) getQuote(colnames(Listy[i]), warnings = FALSE, auto.assign = FALSE)[,5])
+Current_Cap = Current_Stocks*Current_Vol
+Current_Mu = c()
+
+Total_Cap = sum(Current_Cap)
+for (i in 1:length(Listy)){
+  Current_Mu = c(Current_Mu, Current_Cap[i]/Total_Cap)
+}
+
+Numbers_Entropy = matrix(0, nrow = 1, ncol = length(Listy))
+Total_Entropy = -Current_Mu%*%log(Current_Mu)
+for (i in 1:length(Listy)){
+  Numbers_Entropy[1,i] = -Current_Mu[i]*log(Current_Mu[i])/Total_Entropy
+}
+colnames(Numbers_Entropy) = colnames(Listy) 
+write.csv(Numbers_Entropy,paste(paste("Numbers_Entropy", Sys.time()),".csv"))
+
+}
+getEntropyWeights(100000)
