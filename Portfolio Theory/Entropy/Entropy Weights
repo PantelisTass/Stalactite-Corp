@@ -1,0 +1,153 @@
+# Web Scraping: List of S&P 500 stocks
+library(rvest)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(quantmod)
+library(comprehenr) # used for list comprehension
+# get the URL for the wikipedia page with all SP500 symbols
+url <- "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+# use that URL to scrape the SP500 table using rvest
+tickers <- url %>%
+  # read the HTML from the webpage
+  read_html() %>%
+  # one way to get table
+  #html_nodes(xpath='//*[@id="mw-content-text"]/div/table[1]') %>%
+  # easier way to get table
+  html_nodes(xpath = '//*[@id="constituents"]') %>% 
+  html_table()
+#create a vector of tickers
+sp500tickers <- tickers[[1]]
+sp500tickers$Symbol
+sp500tickers = sp500tickers %>% mutate(Symbol = case_when(Symbol == "BRK.B" ~ "BRK-B",
+                                                          Symbol == "BF.B" ~ "BF-B",
+                                                          TRUE ~ as.character(Symbol)))
+sp500 = sp500tickers$Symbol
+
+#a way to get stocks through user input (NOT WORKING)
+getSymbolsList = function(startDate, endDate){
+  List <-c()
+  x = TRUE
+  while(x == TRUE){
+    stockSymbol <- readline()
+    stockSymbol = toupper(stockSymbol)
+    if(stockSymbol == "QUIT."){
+      x = FALSE
+      break;
+    }
+    tryCatch(stonk = try(getSymbols(stockSymbol, from = startDate, to = endDate, warnings=FALSE, auto.assign = FALSE), periodicity = "monthly"),
+             stop("Error at getSymbols"),
+             error = function(e)
+             {
+               print(e$message)
+               #"smthn happened") # or whatever error handling code you want
+             }
+    )
+    dataFramey <- c(stockSymbol)
+    print('Stock added!')
+  }
+  return(List)
+}
+
+giveSymbolsList = function(){
+  x <- read.delim("/Users/pantelistassopoulos/Desktop/stockSymbolsFile.txt", header = TRUE, sep = "\t",)
+  #x <- scan("C:\\Users\\USER\\Desktop\\stockSymbolsFile.txt", what = list(stockNo = 0, stockName = ""))
+  x = x[ , order(colnames(x))]
+  return(x)
+}
+
+Listy = giveSymbolsList()
+print(Listy)
+
+HistoricalPricesColumns = function(symbols, startDate, endDate){
+  
+  options("getSymbols.warning4.0"=FALSE)
+  
+  Cols = c()
+  
+  
+  for(i in 1:ncol(symbols)){
+    Cols = cbind(Cols, as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,2]))
+    
+  }
+  df = data.frame(Cols)
+  #for(i in 1:nrow(symbols)){
+  #  names(df)[i] = symbols[i,]
+  #}
+  
+  colnames(df) = colnames(symbols)
+  return(df)
+}
+
+priceTable = HistoricalPricesColumns(Listy, '2019-01-01', '2021-09-13')
+
+
+library(quantmod)
+options("getSymbols.warning4.0"=FALSE)
+
+HistoricalCapColumns = function(symbols, startDate, endDate){
+  
+  options("getSymbols.warning4.0"=FALSE)
+  
+  ColsCap = c()
+  
+  for(i in 1:length(symbols)){
+    vec = as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,5])*as.vector(getSymbols(colnames(symbols[i]), from = startDate, to = endDate, warnings = FALSE, auto.assign = FALSE, periodicity="monthly")[,2])
+    ColsCap = cbind(ColsCap, vec)
+    
+  }
+  
+  df_Cap = data.frame(ColsCap)
+  #for(i in 1:nrow(symbols)){
+  #  names(df)[i] = symbols[i,]
+  #}
+  
+  colnames(df_Cap) = colnames(symbols)
+  return(df_Cap)
+}
+
+
+MuHistorical = function(histcaps){
+  
+  ColsMu = c()
+  MarketCap = integer(nrow(histcaps))
+  
+  for (i in 1:length(symbols)){
+    MarketCap = MarketCap + histcaps[,i]
+  }
+  
+  for(i in 1:length(symbols)){
+    ColsMu = cbind(ColsMu, histcaps[,i]/MarketCap[i])
+    
+  }
+  
+  df_Mu = data.frame(ColsMu)
+  #for(i in 1:nrow(symbols)){
+  #  names(df)[i] = symbols[i,]
+  #}
+  
+  colnames(df_Mu) = colnames(symbols)
+  return(df_Mu)
+  
+}
+
+EntropyHistorical = function(MuHistorical){
+  ColsS = c()
+  for(i in 1:length(symbols)){
+      vec = sum(-MuHistorical[,i]%*%log(MuHistorical[,i]))
+      ColsS = cbind(ColsS, vec)
+  
+  }
+  
+  df = data.frame(ColsS)
+  #for(i in 1:nrow(symbols)){
+  #  names(df)[i] = symbols[i,]
+  #}
+  
+  colnames(df) = colnames(symbols)
+  return(df)
+
+}
+
+histcap = HistoricalCapColumns(Listy, '2010-01-01', '2021-09-13')
+mu = MuHistorical(histcap)
+EntropyHist = EntropyHistorical(mu)
+muplot(EntropyHist)
