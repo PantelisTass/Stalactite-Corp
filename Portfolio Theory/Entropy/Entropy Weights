@@ -1,4 +1,5 @@
 # Web Scraping: List of S&P 500 stocks
+library(NLP)
 library(rvest)
 library(magrittr) # needs to be run every time you start R and want to use %>%
 library(quantmod)
@@ -77,10 +78,6 @@ HistoricalPricesColumns = function(symbols, startDate, endDate){
   return(df)
 }
 
-priceTable = HistoricalPricesColumns(Listy, '2019-01-01', '2021-09-13')
-
-
-library(quantmod)
 options("getSymbols.warning4.0"=FALSE)
 
 HistoricalCapColumns = function(symbols, startDate, endDate){
@@ -107,47 +104,64 @@ HistoricalCapColumns = function(symbols, startDate, endDate){
 
 MuHistorical = function(histcaps){
   
-  ColsMu = c()
-  MarketCap = integer(nrow(histcaps))
+  Mu = c()
   
-  for (i in 1:length(symbols)){
-    MarketCap = MarketCap + histcaps[,i]
+  MarketCap = c()
+
+  for (i in 1:nrow(histcaps)){
+    MarketCap = c(MarketCap, sum(histcaps[i,]))
   }
   
   for(i in 1:length(symbols)){
-    ColsMu = cbind(ColsMu, histcaps[,i]/MarketCap[i])
+    Mu = c(Mu, histcaps[,i]/MarketCap[i])
     
   }
   
-  df_Mu = data.frame(ColsMu)
-  #for(i in 1:nrow(symbols)){
-  #  names(df)[i] = symbols[i,]
-  #}
-  
-  colnames(df_Mu) = colnames(symbols)
-  return(df_Mu)
+  return(Mu)
   
 }
 
-EntropyHistorical = function(MuHistorical){
+EntropyHistorical = function(symbols, muHistorical){
   ColsS = c()
+  Mat_muHist = as.vector(muHistorical)
+  Total_Entropy = -Mat_muHist%*%log(Mat_muHist)
   for(i in 1:length(symbols)){
-      vec = sum(-MuHistorical[,i]%*%log(MuHistorical[,i]))
-      ColsS = cbind(ColsS, vec)
+    ColsS = cbind(ColsS, -muHistorical[i]*log(muHistorical[i])/Total_Entropy)
   
   }
-  
   df = data.frame(ColsS)
-  #for(i in 1:nrow(symbols)){
-  #  names(df)[i] = symbols[i,]
-  #}
-  
   colnames(df) = colnames(symbols)
   return(df)
 
 }
 
-histcap = HistoricalCapColumns(Listy, '2010-01-01', '2021-09-13')
-mu = MuHistorical(histcap)
-EntropyHist = EntropyHistorical(mu)
-muplot(EntropyHist)
+getEntropyHstorical = function(symbols, startDate, endDate){
+  histcap = HistoricalCapColumns(Listy, startDate, endDate)
+  mu = MuHistorical(histcap)
+  EntropyHist = EntropyHistorical(Listy, mu)
+  return(EntropyHist)
+}
+
+
+
+getEntropyWeights = function(Account_Value){
+Current_Stocks = to_vec(for(i in 1:length(Listy)) getQuote(colnames(Listy[i]), warnings = FALSE, auto.assign = FALSE)[,2])
+Current_Vol = to_vec(for(i in 1:length(Listy)) getQuote(colnames(Listy[i]), warnings = FALSE, auto.assign = FALSE)[,5])
+Current_Cap = Current_Stocks*Current_Vol
+Current_Mu = c()
+
+Total_Cap = sum(Current_Cap)
+for (i in 1:length(Listy)){
+  Current_Mu = c(Current_Mu, Current_Cap[i]/Total_Cap)
+}
+
+Numbers_Entropy = matrix(0, nrow = 1, ncol = length(Listy))
+Total_Entropy = -Current_Mu%*%log(Current_Mu)
+for (i in 1:length(Listy)){
+  Numbers_Entropy[1,i] = -Current_Mu[i]*log(Current_Mu[i])/Total_Entropy
+}
+colnames(Numbers_Entropy) = colnames(Listy) 
+write.csv(Numbers_Entropy,paste(paste("Numbers_Entropy", Sys.time()),".csv"))
+
+}
+getEntropyWeights(100000)
