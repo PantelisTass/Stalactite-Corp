@@ -16,8 +16,7 @@ symbol = 'AAPL'
 startDate = '2020-01-01'
 endDate = '2020-12-31'
 actual = getSymbols(QQQ = 'yahoo', 'AAPL', from = '2020-01-01', to = '2020-12-31', auto.assign = FALSE, env = FALSE)
-Symbol = getSymbols(QQQ = 'yahoo', 'AAPL', to = as.Date(2020)-1, auto.assign = FALSE, env = FALSE)
-
+Symbol = getSymbols(QQQ = 'yahoo', 'AAPL', to = as.Date('2020-01-01')-1, auto.assign = FALSE, env = FALSE)
 PriceMat = c()
 
 vec = as.vector(Symbol[,2])
@@ -45,7 +44,7 @@ diff = setdiff(as.vector(dates), as.vector(index(actual)))
 
 Corr = c()
 get_correlation = function(){
-
+  
   set.seed(NULL)
   returns = c(Daily_returns[length(Daily_returns)])
   for(n in 1:days){
@@ -53,7 +52,7 @@ get_correlation = function(){
   }
   Vec = vec[length(vec)]*exp(returns)
   Indices = as.numeric(as.Date(Intersect)-as.Date('2020-01-01'))
-  
+
   x = as.vector(cor(Vec[Indices], actual[,2]))
   Corr <<- c(Corr, x)
 }
@@ -66,11 +65,14 @@ for (i in xvals){
 print(cummean(Corr))
 
 
-
 yvals = cummean(Corr)
 plot(xvals, yvals, 
-     xlab="Number of Projections", 
-     ylab="Mean Correlation")
-lines(xvals, yvals)
-lines(xvals, rep(mean(yvals), length(xvals)), col = 'red', lwd=2)
-text(locator(), labels = c("mean "))
+     xlab="N", 
+     ylab="Mean Correlation", cex = 0.2)
+lines(xvals, yvals, col = 'red')
+
+moving_average = cummean(Corr)
+differences = moving_average[2:length(moving_average)]-moving_average[1:length(moving_average)-1]
+xvals1 = seq(1,1000,20)
+plot(xvals1, differences[xvals1], cex = 0.2)
+lines(xvals1, differences[xvals1], col = 'red')
