@@ -33,12 +33,9 @@ drift = mu-(sigma**2)/2
 
 
 
-days = as.numeric(as.Date(endDate)-as.Date(startDate))
-t = seq(0, days, 1)
-for (i in 0:days){
-  t[i+1] = as.Date(startDate) + i
-}
-dates = as.Date(t)
+dates = as.Date(index(actual))
+days = as.numeric(length(dates))
+
 Intersect = as.Date(intersect(as.vector(dates), as.vector(index(actual))))
 diff = setdiff(as.vector(dates), as.vector(index(actual)))
 
@@ -51,9 +48,9 @@ get_correlation = function(){
     returns = c(returns, returns[length(returns)] + drift + sigma*rnorm(n = 1, mean = 0, sd = 1))
   }
   Vec = vec[length(vec)]*exp(returns)
-  Indices = as.numeric(as.Date(Intersect)-as.Date('2020-01-01'))
+  Indices = as.numeric(index(actual)-as.Date('2020-01-01'))
 
-  x = as.vector(cor(Vec[Indices], actual[,2]))
+  x = as.vector(cor(Vec[-1], actual[,2]))
   Corr <<- c(Corr, x)
 }
 
@@ -63,7 +60,6 @@ for (i in xvals){
   get_correlation()
 }
 print(cummean(Corr))
-
 
 yvals = cummean(Corr)
 plot(xvals, yvals, 
@@ -76,3 +72,9 @@ differences = moving_average[2:length(moving_average)]-moving_average[1:length(m
 xvals1 = seq(1,1000,20)
 plot(xvals1, differences[xvals1], cex = 0.2)
 lines(xvals1, differences[xvals1], col = 'red')
+
+
+
+
+
+
