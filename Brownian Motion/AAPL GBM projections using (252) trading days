@@ -1,0 +1,79 @@
+# for scraping
+library(rvest)
+# blanket import for core tidyverse packages
+library(tidyverse)
+# tidy financial analysis 
+library(tidyquant)
+# tidy data cleaning functions
+library(janitor)
+library(quantmod)
+library(ggplot2)
+library(reshape2)
+library(comprehenr)
+symbol = 'AAPL'
+startDate = '2020-01-01'
+endDate = '2020-12-31'
+N=10
+
+actual = getSymbols(QQQ = 'yahoo', symbol, from = startDate, to = endDate, auto.assign = FALSE, env = FALSE)
+Symbol = getSymbols(QQQ = 'yahoo', symbol, to = as.Date(startDate)-1, auto.assign = FALSE, env = FALSE)
+print(head(Symbol))
+
+PriceMat = c()
+
+vec = as.vector(Symbol[,2])
+
+Daily_returns = c()
+
+for(i in 1:(length(vec)-1)){
+  Daily_returns = c(Daily_returns, log(vec[i+1]/vec[i]))
+}
+
+mu = mean(Daily_returns)
+sigma = sd(Daily_returns)
+drift = mu-(sigma**2)/2
+dates = as.Date(index(actual))
+days = length(dates)
+Dates = rep(0, length(dates)+1)
+Dates[1] = 18261 #'2019-12-31'
+Dates[2:length(Dates)] = dates[1:days]
+Dates = as.numeric(Dates)
+colvec = c()
+for(j in 1: N){
+  set.seed(NULL)
+  returns = c(Daily_returns[length(Daily_returns)])
+  for(n in 1:days){
+    returns = c(returns, returns[length(returns)] + drift + sigma*rnorm(n = 1, mean = 0, sd = 1))
+  }
+  PriceMat = cbind(PriceMat, vec[length(vec)]*exp(returns))
+  colvec = c(colvec, j)
+}
+
+PriceMat = cbind(PriceMat, Dates)
+Mat = PriceMat[,-ncol(PriceMat)]
+Min = to_vec(for(i in 1:nrow(Mat)) min(Mat[i,]))
+Max = to_vec(for(i in 1:nrow(Mat)) max(Mat[i,]))
+df_extrema = data.frame(cbind(Min, Max)) 
+df_extrema = data.frame(cbind(df_extrema, Dates))
+colnames(df_extrema) = c('Min', 'Max', 'time')
+df_extrema_long = melt(df_extrema, id.vars = c('time'), variable = c('Paths'))
+
+colvec = c(colvec, 'time')
+  #, 'Time_actual', 'actual'
+df = data.frame(PriceMat)
+colnames(df) = colvec
+actual_df = data.frame(cbind(as.Date(dates), as.vector(actual[,2])))
+colnames(actual_df) = c('actual_dates', 'Historical')
+  
+df_long = melt(df, id.vars = c('time'), variable = c('Paths'))
+print(df_long)
+gg = ggplot(df_long, mapping = aes(x = as.Date(time), y = value, linetype = symbol, colour = 'red')) + ggtitle (paste("Price Projections for", symbol))+xlab('Time')+ylab('Price')+geom_line() + 
+geom_line(actual_df, size = 1, mapping = aes(as.Date(dates), Historical), color = 'black') + scale_color_manual(values=c("blue"))
+labs(linetype="Historical Path")
+print(gg)
+
+gg1 = ggplot(df, mapping = aes(x = as.Date(Dates), y = df$Min)) + ggtitle (paste("Area Enclosed by Projecitons for", symbol))+xlab('Time')+ylab('Price') + 
+  geom_line(actual_df, size = 1, mapping = aes(as.Date(dates), Historical), color = 'black') + geom_ribbon(aes(ymin=Min, ymax=Max), alpha = 0.5, fill = 'cyan4')
+
+print(gg1)
+
