@@ -1,4 +1,4 @@
-# Web Scraping: List of S&P 500 stocks
+# Web Scraping: List of S&P 500 stocks Credit: https://towardsdatascience.com/exploring-the-sp500-with-r-part-1-scraping-data-acquisition-and-functional-programming-56c9498f38e8
 library(NLP)
 library(rvest)
 library(magrittr) # needs to be run every time you start R and want to use %>%
