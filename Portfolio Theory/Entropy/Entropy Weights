@@ -1,4 +1,7 @@
-# Contributed by Pantelis Tassopoulos
+///////////////Attribution Notice://////////////////////
+///This program was written by Pantelis Tassopoulos, 2020/////
+///Contact at pade.tass@gmail.com///////////////////////
+//////////////////////////////////////////////////////
 # Web Scraping: List of S&P 500 stocks
 library(NLP)
 library(rvest)
@@ -166,3 +169,7 @@ write.csv(Numbers_Entropy,paste(paste("Numbers_Entropy", Sys.time()),".csv"))
 
 }
 getEntropyWeights(100000)
+///////////////Attribution Notice://////////////////////
+///This program was written by Pantelis Tassopoulos, 2020/////
+///Contact at pade.tass@gmail.com///////////////////////
+//////////////////////////////////////////////////////
