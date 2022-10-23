@@ -1,3 +1,4 @@
+# Contributed by Pantelis Tassopoulos
 # Web Scraping: List of S&P 500 stocks
 library(NLP)
 library(rvest)
